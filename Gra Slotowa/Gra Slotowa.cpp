@@ -1,5 +1,4 @@
-﻿#include <iostream>
-#include <fstream>
+#include <iostream>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -26,7 +25,6 @@ private:
     int currentCredit;
     std::vector<Reel> reels;
     std::vector<Symbol> symbols;
-    std::ofstream creditOutFile;
 
     int calculatePayout(int lineBet, const std::vector<int>& results);
     void spin();
@@ -35,24 +33,21 @@ private:
     void displayResult(const std::vector<int>& results, int payout);
 
 public:
-    SlotGame(int games, int startCredit, const std::string& outFile);
+    SlotGame(int games, int startCredit);
     ~SlotGame();
 
     void run();
 };
 
 // Konstruktor
-SlotGame::SlotGame(int games, int startCredit, const std::string& outFile)
+SlotGame::SlotGame(int games, int startCredit)
     : gamesCount(games), startCredit(startCredit), currentCredit(startCredit) {
-    creditOutFile.open(outFile);
     generateReels();
     loadSymbols();
 }
 
 // Destruktor
-SlotGame::~SlotGame() {
-    creditOutFile.close();
-}
+SlotGame::~SlotGame() {}
 
 // Metoda generująca walcę
 void SlotGame::generateReels() {
@@ -101,9 +96,6 @@ void SlotGame::spin() {
     currentCredit -= lineBet;
     currentCredit += payout;
 
-    // Zapisujemy stan kredytu do pliku
-    creditOutFile << currentCredit << "\n";
-
     // Wyświetlamy wynik losowania
     displayResult(results, payout);
 }
@@ -150,19 +142,16 @@ void SlotGame::run() {
     std::cout << "Start Credit: " << startCredit << "\n";
     std::cout << "End Credit: " << currentCredit << "\n";
     std::cout << "Net Win/Loss: " << currentCredit - startCredit << "\n";
-    double rtp = static_cast<double>(currentCredit - startCredit) / (gamesCount * 1.0 * 1.0);
-    double hf = static_cast<double>(std::count_if(creditOutFile, std::istream_iterator<std::string>(), [](const std::string& line) {
-        return std::stoi(line) > 0;
-        })) / (gamesCount * 1.0 * 1.0);
-        std::cout << "RTP: " << rtp << "\n";
-        std::cout << "HF: " << hf << "\n";
 }
 
 int main(int argc, char* argv[]) {
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " -gamesCount [number] -startCredit [number]\n";
+        return 1;
+    }
+
     int gamesCount = 0;
     int startCredit = 0;
-    std::string creditOutFile;
-    std::vector<int> customSymbols;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -177,32 +166,10 @@ int main(int argc, char* argv[]) {
                 startCredit = std::stoi(argv[++i]);
             }
         }
-        else if (arg == "-creditOutFile") {
-            if (i + 1 < argc) {
-                creditOutFile = argv[++i];
-            }
-        }
-        else if (arg == "-symbols") {
-            if (i + 1 < argc) {
-                std::string symbolsArg = argv[++i];
-                std::stringstream ss(symbolsArg);
-                std::string symbol;
-                while (getline(ss, symbol, ',')) {
-                    customSymbols.push_back(std::stoi(symbol));
-                }
-            }
-        }
     }
 
-    if (!creditOutFile.empty()) {
-        SlotGame slotGame(1, startCredit, creditOutFile);
-        int payout = slotGame.calculatePayout(1, customSymbols);
-        std::cout << payout << "\n";
-    }
-    else {
-        SlotGame slotGame(gamesCount, startCredit, "credit_log.txt");
-        slotGame.run();
-    }
+    SlotGame slotGame(gamesCount, startCredit);
+    slotGame.run();
 
     return 0;
 }
